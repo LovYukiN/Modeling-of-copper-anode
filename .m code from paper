@@ -1,5 +1,50 @@
 ________________________________________________________
     This is code for 'Optimisation.m'
 ________________________________________________________
+clear;close all;
+format longE
 
-    clear;close all;
+%Declaration of global variables
+global History Evals Iter s1 s2 s3 s4
+global nop E v y n
+
+%Starting initial guess values
+IGV=[600000 0.25 3000 0.45];  % E v σy n
+E=IGV(1,1); v=IGV(1,2); y=IGV(1,3); n=IGV(1,4);
+nop=4; % the Number of Parameters
+s1=1.0e-9; s2=1.0e-4; s3=1.0e-7; s4=1.0e-4; %scale coefficients for each parameters  (???why)
+InitialParameters=[E*s1, v*s2, y*s3, n*s4];
+
+%Initialise counters
+Iter=0; Evals=0; History=[];
+
+%From here the optimisation starts(means I can't understand now)
+
+%setting optimisation options
+Set_options=optimset('TolFun',1e-15,'TolX',1e-15,'MaxIter',10000)
+
+%invoke optimizer
+[x,resnorm]=Isqnonlin(@objfunction,InitialParameter,[0 1.0000E-05 0 5.000E-06],[inf 4.99999E-05 inf 4.99999E-05],Set_options)
+
+%Scale th optimised parameters to normal values
+x1=x(1)/s1;x2=x(2)/s2;x(3)/s3;x(4)/s4;
+OptParam=[x1 x2 x3 x4];
+
+%save the optimised parameters in "parameter.txt"
+parameter=fopen('parameters.txt','w');
+fprintf(parameter,'%12.8f %12.8f %12.8f %12.8f', OptParam); %save('parameter.txt','OptParam','-ascii')
+fclose(parameter);
+%save the parameter evolution history in "Parameter_history.txt".
+History=[History;[Iter Evals x1 x2 x3 x4 resnorm]];
+Parameter_history=fopen('Parameter_history.txt','w');
+fprintf(parameter,'%6.1f %6.2f %12.8f %12.8f %12.8f %12.8f %12.8f', History); %save('Parameter_history.txt','History','-ascii')
+fclose(Parameter_history);
+
+%Call external programme
+%Pre_processing: replacing material parameters in ABAQUS input file%
+%ABAQUS job
+%Post_processing:extracting loading-unloading curve from ABAQUS odb.file%
+!del tempatefile.* %Deleting previous tempatefile.odb
+!pre_processing %Replacing material parameters in ABAQUS input ile
+!copy ABAQUS_INPUT_FILE_NAME.inp tempate_file.inp
+!abaqus job=tempate_file interactive %input ABAQUS job

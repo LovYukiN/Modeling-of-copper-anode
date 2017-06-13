@@ -48,3 +48,59 @@ fclose(Parameter_history);
 !pre_processing %Replacing material parameters in ABAQUS input ile
 !copy ABAQUS_INPUT_FILE_NAME.inp tempate_file.inp
 !abaqus job=tempate_file interactive %input ABAQUS job
+
+end of 'Optimisation.m'
+—————————————————————————————————————————————————————
+This is code for 'Objective_function.m'
+_____________________________________________________
+!abaqus cae noGui=post_processing.py %Extracting load-unload curve from ABAQUS odb.file
+
+%This function computes the difference between target and simulated curves
+function err=f(params)
+global Iter Evals History s1 s2 s3 s4 nop nob
+global E v y n
+%Scale the parameters to normal values
+x1=params（1）/s1; x2=params(2)/s2; x3=params(3)/s3; x4=params(4)/s4;
+OptParam=[x1 x2 x3 x4];
+
+%save the parameters in parameter.txt
+parameter=fopen('parameters.txt','w');
+fprintf(parameter,'%12.8f %12.8f %12.8f %12.8f', OptParam);
+fclose(parameter);
+!del tempatefile.*
+!pre_processing
+!copy ABAQUS_INPUT_FILE_NAME.inp tempatefile.inp
+!abaqus job=tempatefile interactive
+!abaqus cae noGUI=post_processing.py
+
+%Invoke the target loading%unloading curve
+load loading.txt
+Dis=loading(:,1);Force1=unloading(:,2);
+A1=[Force;Force1];
+A=[Dis;Dis1];
+nob=length(A);
+plot(A,A1,'g-'),hold on
+
+%Invoke the loading & unloading curve from FEA
+load loading_FEA.txt
+unloading_Dis_FEA=unloading_FEA(:,1);
+unloading_Force_FEA=unloading_FEA(:,2);
+B1=[loading_Force_FEA;unloading_Force_FEA];
+B=[loading_Dis_FEA;unloading_Dis_FEA];
+
+%Plotboth target and simulated loading-unloading curve.
+plot(B,B1,'r-'),hold on
+ylabel('Load');
+xlaber('Indentation displacement');
+
+%The difference between the displacement portions of target and simulated loading&unloading curves.
+err=A1-B1;
+
+%calculate the norm of error vector
+resnorm=0.5*sum(err.^2);
+History=[History;[Iter Evals x1 x2 x3 x4 resnorm]];
+save('history.txt','History','-ascii').
+Evals=evals+1;
+if rem(Evals,nop)==0
+Iter=Iter+1;
+end
